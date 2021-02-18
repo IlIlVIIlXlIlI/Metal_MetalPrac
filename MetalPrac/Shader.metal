@@ -1,31 +1,28 @@
 #include <metal_stdlib>
 #include "ShaderTypes.h"
+using namespace metal;
 
-// Vertex関数が出力するデータの型定義
-typedef struct {
-    // 座標
-    float4 position [[position]];
-    
-    // 色
-    float4 color;
-    
-} RasterizerData;
-
-vertex RasterizerData vertexShader(
-   uint vertexID [[vertex_id]],
-   constant ShaderVertex *vertices
-        [[buffer(kShaderVertexInputIndexVertices)]],
-   constant vector_float2 *viewportSize
-        [[buffer(kShaderVertexInputIndexViewportSize)]])
+struct ColorInOut
 {
-    RasterizerData result = {};
-    result.position = float4(0.0, 0.0, 0.0, 1.0);
-    result.position.xy = vertices[vertexID].position / (*viewportSize);
-    result.color = vertices[vertexID].color;
-    return result;
+    float4 position [[ position ]];
+    float2 texCoords;
+};
+
+vertex ColorInOut vertexShader(constant float4 *positions [[ buffer(0) ]],
+                               constant float2 *texCoords [[ buffer(1) ]],
+                                        uint    vid       [[ vertex_id ]])
+{
+    ColorInOut out;
+    out.position = positions[vid];
+    out.texCoords = texCoords[vid];
+    return out;
 }
 
-fragment float4 fragmentShader(RasterizerData in [[stage_in]])
+fragment float4 fragmentShader(ColorInOut       in      [[ stage_in ]],
+                               texture2d<float> texture [[ texture(0) ]])
 {
-    return metal::floor(in.color * 5.0) / 5.0;
+    constexpr sampler colorSampler;
+    float4 color = texture.sample(colorSampler, in.texCoords);
+    return color;
 }
+
